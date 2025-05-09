@@ -6,6 +6,8 @@ import {
   Param,
   Request,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { VotesService } from './votes.service';
 import { CreateVoteDto } from './dto/create-vote.dto';
@@ -37,7 +39,11 @@ export class VotesController {
     @Request() req,
     @Body() createVoteDto: CreateVoteDto,
   ) {
-    return this.votesService.create(postId, req.user.id, createVoteDto);
+    const user = req.user;
+    if (!user) {
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+    return this.votesService.create(postId, user?.id || 1, createVoteDto);
   }
 
   @Get()

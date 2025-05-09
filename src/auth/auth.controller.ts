@@ -1,42 +1,43 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, Get, UseGuards, Req } from '@nestjs/common';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { AuthResponseDto } from './dto/auth-response.dto';
-import { Public } from './decorators/public.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { JwtPayload } from '../common/interfaces';
+import { UsersService } from 'src/users/users.service';
+import { AuthGuard } from '@nestjs/passport';
 
-@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
-  @Public()
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiBody({ type: RegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: 'User successfully registered',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 409, description: 'Email or username already in use' })
-  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
-    return this.authService.register(registerDto);
+  @Post('login')
+  async login(@Body() email: string) {
+    const user = await this.usersService.getUser(email);
+    return this.authService.generateTokens(user.id, user.email);
   }
 
-  @Public()
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with email and password' })
-  @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully logged in',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(loginDto);
+  @Post('refresh-token')
+  getRefreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
+    const newAccessToken: JwtPayload = this.authService.verifyRefreshToken(
+      refreshTokenDto.token,
+    );
+    return { accessToken: newAccessToken };
+  }
+
+  // Redirects user to Google login page
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {}
+
+  // Google redirects to this endpoint after authentication
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  googleAuthRedirect(@Req() req) {
+    return {
+      message: 'Google login successful',
+      user: req.user,
+    };
   }
 }
