@@ -62,8 +62,8 @@ export class VotesService {
 
     // Create vote
     const vote = this.votesRepository.create({
-      userId,
-      optionId,
+      user: { id: userId },
+      option,
     });
 
     return this.votesRepository.save(vote);
@@ -86,7 +86,7 @@ export class VotesService {
     const voteCounts = await Promise.all(
       post.options.map(async (option) => {
         const count = await this.votesRepository.count({
-          where: { optionId: option.id },
+          where: { option: { id: option.id } },
         });
 
         return { optionId: option.id, count };
@@ -98,26 +98,8 @@ export class VotesService {
 
   async findByUser(userId: number): Promise<Vote[]> {
     return this.votesRepository.find({
-      where: { userId },
+      where: { user: { id: userId } },
       relations: ['option', 'option.post'],
     });
-  }
-
-  async hasVoted(
-    postId: number,
-    userId: number,
-  ): Promise<{ hasVoted: boolean; optionId?: number }> {
-    const existingVote = await this.votesRepository
-      .createQueryBuilder('vote')
-      .innerJoin('vote.option', 'option')
-      .where('option.postId = :postId', { postId })
-      .andWhere('vote.userId = :userId', { userId })
-      .getOne();
-
-    if (existingVote) {
-      return { hasVoted: true, optionId: existingVote.optionId };
-    }
-
-    return { hasVoted: false };
   }
 }

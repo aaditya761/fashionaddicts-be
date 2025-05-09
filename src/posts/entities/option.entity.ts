@@ -20,8 +20,4 @@ export class Option extends BaseEntity {
   @ApiProperty({ description: 'Number of votes' })
   votesCount?: number;
 
-  @ApiProperty({
-    description: 'Whether the current user voted for this option',
-  })
-  hasUserVoted?: boolean;
 }

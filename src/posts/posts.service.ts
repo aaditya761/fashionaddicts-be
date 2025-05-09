@@ -28,6 +28,7 @@ export class PostsService {
     // Create post
     const post = this.postsRepository.create({
       title: createPostDto.title,
+      description: createPostDto.description,
       user: { id: userId },
     });
 
@@ -103,22 +104,9 @@ export class PostsService {
         // Calculate vote counts for each option
         for (const option of post.options) {
           const voteCount = await this.votesRepository.count({
-            where: { optionId: option.id },
+            where: { option: { id: option.id } },
           });
           option.votesCount = voteCount;
-
-          // Check if the user has voted for this option
-          if (userId) {
-            const userVote = await this.votesRepository.findOne({
-              where: {
-                userId,
-                optionId: option.id,
-              },
-            });
-            option.hasUserVoted = !!userVote;
-          } else {
-            option.hasUserVoted = false;
-          }
         }
 
         return post;
@@ -141,22 +129,9 @@ export class PostsService {
     // Calculate vote counts for each option
     for (const option of post.options) {
       const voteCount = await this.votesRepository.count({
-        where: { optionId: option.id },
+        where: { option: { id: option.id } },
       });
       option.votesCount = voteCount;
-
-      // Check if the user has voted for this option
-      if (userId) {
-        const userVote = await this.votesRepository.findOne({
-          where: {
-            userId,
-            optionId: option.id,
-          },
-        });
-        option.hasUserVoted = !!userVote;
-      } else {
-        option.hasUserVoted = false;
-      }
     }
 
     return post;
@@ -176,7 +151,7 @@ export class PostsService {
 
       for (const option of post.options) {
         const voteCount = await this.votesRepository.count({
-          where: { optionId: option.id },
+          where: { option: { id: option.id } },
         });
         option.votesCount = voteCount;
         totalVotes += voteCount;
@@ -187,19 +162,16 @@ export class PostsService {
     return posts;
   }
 
-  async getUserVotes(
-    userId: number,
-  ): Promise<{ optionId: number; post: Post }[]> {
+  async getUserVotes(userId: number): Promise<{ post: Post }[]> {
     // Find all votes by the user
     const votes = await this.votesRepository.find({
-      where: { userId },
+      where: { user: { id: userId } },
       relations: ['option', 'option.post', 'option.post.user'],
       order: { createdAt: 'DESC' },
     });
 
     // Format the results
     return votes.map((vote) => ({
-      optionId: vote.optionId,
       post: vote.option.post,
     }));
   }

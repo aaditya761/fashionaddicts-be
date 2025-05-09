@@ -51,13 +51,4 @@ export class VotesController {
   findAll(@Param('postId', ParseIntPipe) postId: number) {
     return this.votesService.findAll(postId);
   }
-
-  @Get('user')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Check if current user has voted on a post' })
-  @ApiParam({ name: 'postId', description: 'Post ID' })
-  @ApiResponse({ status: 200, description: 'Returns voting status' })
-  hasVoted(@Param('postId', ParseIntPipe) postId: number, @Request() req) {
-    return this.votesService.hasVoted(postId, req.user.id);
-  }
 }

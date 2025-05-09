@@ -31,7 +31,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Create a new post' })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   create(@Request() req, @Body() createPostDto: CreatePostDto) {
-    return this.postsService.create(req.user.id, createPostDto);
+    return this.postsService.create(req.user, createPostDto);
   }
 
   @Public()
