@@ -18,7 +18,7 @@ export class User extends BaseEntity {
 
   @ApiHideProperty()
   @Exclude()
-  @Column()
+  @Column({ nullable: true })
   password: string;
 
   @ApiProperty({ description: 'Profile description', nullable: true })

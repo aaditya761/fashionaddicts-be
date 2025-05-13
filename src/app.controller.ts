@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Public } from './auth/decorators/public.decorator';
+import { Public } from './auth/auth.public';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('app')

@@ -12,7 +12,7 @@ import {
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
-import { Public } from '../auth/decorators/public.decorator';
+import { Public } from '../auth/auth.public';
 import {
   ApiTags,
   ApiOperation,

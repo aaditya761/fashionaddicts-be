@@ -2,15 +2,13 @@ import {
   Body,
   Controller,
   Post,
-  Get,
-  UseGuards,
-  Req,
   HttpStatus,
   HttpException,
 } from '@nestjs/common';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthService } from './auth.service';
 import { UsersService } from 'src/users/users.service';
+import { Public } from './auth.public';
 
 @Controller('auth')
 export class AuthController {
@@ -36,10 +34,9 @@ export class AuthController {
     return { accessToken: newAccessToken };
   }
 
+  @Public()
   @Post('google/verify')
   async verifyGoogleToken(@Body() body: { credential: string }) {
-    console.log("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
-    console.log(body);
     try {
       if (!body.credential) {
         throw new HttpException(
@@ -53,8 +50,6 @@ export class AuthController {
       );
       return userData;
     } catch (error) {
-      console.log("nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
-      console.log(error)
       throw new HttpException(
         error.message || 'Authentication failed',
         error.status || HttpStatus.UNAUTHORIZED

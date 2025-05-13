@@ -56,7 +56,6 @@ export class AuthService {
       });
 
       const payload = ticket.getPayload();
-
       if (!payload) {
         throw new HttpException(
           'Invalid token payload',
@@ -65,10 +64,11 @@ export class AuthService {
       }
 
       // Add type assertion for the payload
-      const { email, picture } = payload as {
+      const { email, picture, given_name } = payload as {
         sub: string;
         email: string;
         picture: string;
+        given_name: string;
       };
 
       // Check if email exists to satisfy TypeScript
@@ -83,6 +83,7 @@ export class AuthService {
         // Create new user if not found
         user = await this.usersService.create({
           email,
+          username: given_name,
           profilePicture: picture,
         });
       }
