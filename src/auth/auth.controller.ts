@@ -1,9 +1,16 @@
-import { Body, Controller, Post, Get, UseGuards, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Req,
+  HttpStatus,
+  HttpException,
+} from '@nestjs/common';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthService } from './auth.service';
-import { JwtPayload } from '../common/interfaces';
 import { UsersService } from 'src/users/users.service';
-import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -14,30 +21,44 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() email: string) {
-    const user = await this.usersService.getUser(email);
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new HttpException('Unauthorized', HttpStatus.NOT_FOUND);
+    }
     return this.authService.generateTokens(user.id, user.email);
   }
 
   @Post('refresh-token')
   getRefreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
-    const newAccessToken: JwtPayload = this.authService.verifyRefreshToken(
+    const newAccessToken = this.authService.verifyRefreshToken(
       refreshTokenDto.token,
     );
     return { accessToken: newAccessToken };
   }
 
-  // Redirects user to Google login page
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googleAuth() {}
-
-  // Google redirects to this endpoint after authentication
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  googleAuthRedirect(@Req() req) {
-    return {
-      message: 'Google login successful',
-      user: req.user,
-    };
+  @Post('google/verify')
+  async verifyGoogleToken(@Body() body: { credential: string }) {
+    console.log("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
+    console.log(body);
+    try {
+      if (!body.credential) {
+        throw new HttpException(
+          'No credential provided',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      // Verify and process the token
+      const userData = await this.authService.verifyGoogleToken(
+        body.credential,
+      );
+      return userData;
+    } catch (error) {
+      console.log("nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
+      console.log(error)
+      throw new HttpException(
+        error.message || 'Authentication failed',
+        error.status || HttpStatus.UNAUTHORIZED
+      );
+    }
   }
 }
