@@ -36,6 +36,12 @@ export class UsersController {
     return this.usersService.getProfile(req.user.id);
   }
 
+  @Get('email')
+  @ApiParam({ name: 'email' })
+  async getProfileByEmail(@Param('email') email: string): Promise<User | null> {
+    return this.usersService.findByEmail(email);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiParam({ name: 'id', description: 'User ID' })

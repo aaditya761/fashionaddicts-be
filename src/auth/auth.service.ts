@@ -24,7 +24,7 @@ export class AuthService {
     // Create Access Token
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '15m', // Access token expires in 15 minutes
+      expiresIn: '30m', // Access token expires in 15 minutes
     });
 
     // Create Refresh Token (Longer Expiry)
@@ -89,10 +89,12 @@ export class AuthService {
       }
 
       return {
-        access_token: this.generateTokens(user.id, user.email),
+        tokens: this.generateTokens(user.id, user.email),
         user: {
           id: user.id,
           email: user.email,
+          picture: picture,
+          name: given_name,
         },
       };
     } catch (error) {
