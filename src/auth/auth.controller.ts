@@ -26,6 +26,14 @@ export class AuthController {
     return this.authService.generateTokens(user.id, user.email);
   }
 
+  @Public()
+  @Post('access-token')
+  getAccessTokenFromRefreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.getAccessTokenFromRefreshToken(
+      refreshTokenDto.token,
+    );
+  }
+
   @Post('refresh-token')
   getRefreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     const newAccessToken = this.authService.verifyRefreshToken(

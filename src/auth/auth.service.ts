@@ -24,7 +24,7 @@ export class AuthService {
     // Create Access Token
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '30m', // Access token expires in 15 minutes
+      expiresIn: '30m',
     });
 
     // Create Refresh Token (Longer Expiry)
@@ -41,6 +41,24 @@ export class AuthService {
       return this.jwtService.verify<JwtPayload>(token, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
+    } catch (error: any) {
+      console.error(error);
+      return null;
+    }
+  }
+
+  async getAccessTokenFromRefreshToken(token: string) {
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(token, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+      console.log(payload);
+
+      const accessToken = await this.jwtService.signAsync(
+        { sub: payload.sub, email: payload.email },
+        { secret: process.env.JWT_SECRET, expiresIn: '30m' },
+      );
+      return { accessToken };
     } catch (error: any) {
       console.error(error);
       return null;
