@@ -6,8 +6,14 @@ import {
   ValidateNested,
   ArrayMinSize,
   IsUrl,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
+export enum PostType {
+  CHOOSE = 'choose',
+  LOOK = 'look',
+}
 
 export class CreateOptionDto {
   @ApiProperty({ description: 'Image URL' })
@@ -25,6 +31,10 @@ export class CreatePostDto {
   @IsNotEmpty()
   @IsString()
   description: string;
+
+  @IsNotEmpty()
+  @IsEnum(PostType)
+  postType?: PostType = PostType.CHOOSE;
 
   @ApiProperty({ description: 'Options to vote on', type: [CreateOptionDto] })
   @IsArray()

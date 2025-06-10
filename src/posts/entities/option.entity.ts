@@ -18,6 +18,15 @@ export class Option extends BaseEntity {
   votes: Vote[];
 
   @ApiProperty({ description: 'Number of votes' })
+  @Column({ nullable: true })
   votesCount?: number;
 
+  @Column({ nullable: true })
+  image?: string;
+
+  @Column({ nullable: true })
+  productName?: string;
+
+  @Column({ nullable: true })
+  siteName?: string;
 }

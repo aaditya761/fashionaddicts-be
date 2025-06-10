@@ -10,7 +10,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
 import { Public } from '../auth/auth.public';
 import {
@@ -31,7 +31,15 @@ export class PostsController {
   @ApiOperation({ summary: 'Create a new post' })
   @ApiResponse({ status: 201, description: 'Post created successfully' })
   create(@Request() req, @Body() createPostDto: CreatePostDto) {
-    return this.postsService.create(req.user, createPostDto);
+    return this.postsService.create(req.user.sub, createPostDto);
+  }
+
+  @Post('link-preview')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get link preview' })
+  @ApiResponse({ status: 200, description: 'Preview fetch successfully' })
+  getPreview(@Request() req, @Body() url: CreateOptionDto) {
+    return this.postsService.getLinkPreview(url);
   }
 
   @Public()

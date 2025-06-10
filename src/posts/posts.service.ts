@@ -8,8 +8,10 @@ import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { Option } from './entities/option.entity';
 import { Vote } from '../votes/entities/vote.entity';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto, FilterType } from './dto/filter-posts.dto';
+import { getLinkPreview } from 'link-preview-js';
+
 
 @Injectable()
 export class PostsService {
@@ -24,12 +26,19 @@ export class PostsService {
     private readonly votesRepository: Repository<Vote>,
   ) {}
 
+  async getLinkPreview(url: CreateOptionDto): Promise<any> {
+    return await getLinkPreview(url.url).then((data) => {
+      return data;
+    });
+  }
+
   async create(userId: number, createPostDto: CreatePostDto): Promise<Post> {
     // Create post
     const post = this.postsRepository.create({
       title: createPostDto.title,
       description: createPostDto.description,
       user: { id: userId },
+      type: createPostDto.postType,
     });
 
     // Save post to get ID
