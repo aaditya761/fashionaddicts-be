@@ -10,7 +10,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
-import { CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
+import { CreateLinkPreviewDto, CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
 import { Public } from '../auth/auth.public';
 import {
@@ -38,7 +38,7 @@ export class PostsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get link preview' })
   @ApiResponse({ status: 200, description: 'Preview fetch successfully' })
-  getPreview(@Request() req, @Body() url: CreateOptionDto) {
+  getPreview(@Request() req, @Body() url: CreateLinkPreviewDto) {
     return this.postsService.getLinkPreview(url);
   }
 
@@ -52,7 +52,7 @@ export class PostsController {
     return this.postsService.findAll(userId, filterDto);
   }
 
-  @Public()
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a post by ID' })
   @ApiParam({ name: 'id', description: 'Post ID' })
@@ -60,7 +60,7 @@ export class PostsController {
   @ApiResponse({ status: 404, description: 'Post not found' })
   async findOne(@Request() req, @Param('id', ParseIntPipe) id: number) {
     // Get user ID if authenticated, otherwise null
-    const userId = req.user?.id || null;
+    const userId: number = req.user.sub;
     return this.postsService.findOne(id, userId);
   }
 

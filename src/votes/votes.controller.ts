@@ -39,11 +39,7 @@ export class VotesController {
     @Request() req,
     @Body() createVoteDto: CreateVoteDto,
   ) {
-    const user = req.user;
-    if (!user) {
-      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
-    }
-    return this.votesService.create(postId, user?.id || 1, createVoteDto);
+    return this.votesService.create(postId, req.user.sub, createVoteDto);
   }
 
   @Get()

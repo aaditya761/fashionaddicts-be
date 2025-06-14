@@ -8,8 +8,8 @@ import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { Option } from './entities/option.entity';
 import { Vote } from '../votes/entities/vote.entity';
-import { CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
-import { FilterPostsDto, FilterType } from './dto/filter-posts.dto';
+import { CreateLinkPreviewDto, CreatePostDto } from './dto/create-post.dto';
+import { FilterPostsDto } from './dto/filter-posts.dto';
 import { getLinkPreview } from 'link-preview-js';
 
 
@@ -26,7 +26,7 @@ export class PostsService {
     private readonly votesRepository: Repository<Vote>,
   ) {}
 
-  async getLinkPreview(url: CreateOptionDto): Promise<any> {
+  async getLinkPreview(url: CreateLinkPreviewDto): Promise<any> {
     return await getLinkPreview(url.url).then((data) => {
       return data;
     });
@@ -63,7 +63,7 @@ export class PostsService {
     filterDto: FilterPostsDto,
   ): Promise<{ posts: Post[]; total: number }> {
     const { page, limit, filter } = filterDto;
-    const skip = (page || 0 - 1) * (limit || 1);
+    const skip = ((page || 1) - 1) * (limit || 1);
 
     // Create base query builder
     let queryBuilder = this.postsRepository
@@ -71,35 +71,10 @@ export class PostsService {
       .leftJoinAndSelect('post.user', 'user')
       .leftJoinAndSelect('post.options', 'option')
       .leftJoinAndSelect('post.comments', 'comment')
+      .leftJoinAndSelect('comment.user', 'commentUser')
       .loadRelationCountAndMap('post.commentCount', 'post.comments');
 
-    // Add order based on filter type
-    switch (filter) {
-      case FilterType.POPULAR:
-        queryBuilder = queryBuilder
-          .leftJoin('option.votes', 'vote')
-          .addSelect('COUNT(vote.id)', 'voteCount')
-          .groupBy('post.id, user.id, option.id, comment.id')
-          .orderBy('voteCount', 'DESC');
-        break;
-      case FilterType.TRENDING:
-        // Trending is a mix of recent and popular
-        queryBuilder = queryBuilder
-          .leftJoin('option.votes', 'vote')
-          .addSelect('COUNT(vote.id)', 'voteCount')
-          .addSelect('post.createdAt', 'postDate')
-          .groupBy('post.id, user.id, option.id, comment.id, post.createdAt')
-          // Custom formula: recent posts get a boost
-          .orderBy(
-            '(COUNT(vote.id) * 0.7) + (EXTRACT(EPOCH FROM post.createdAt) / 10000000 * 0.3)',
-            'DESC',
-          );
-        break;
-      case FilterType.RECENT:
-      default:
-        queryBuilder = queryBuilder.orderBy('post.createdAt', 'DESC');
-        break;
-    }
+    queryBuilder = queryBuilder.orderBy('post.createdAt', 'DESC');
 
     // Execute query with pagination
     const [posts, total] = await queryBuilder
@@ -125,7 +100,7 @@ export class PostsService {
     return { posts: enhancedPosts, total };
   }
 
-  async findOne(id: number, userId: number | null): Promise<Post> {
+  async findOne(id: number, userId: number): Promise<Post> {
     const post = await this.postsRepository.findOne({
       where: { id },
       relations: ['user', 'options', 'comments', 'comments.user'],
@@ -140,6 +115,13 @@ export class PostsService {
       const voteCount = await this.votesRepository.count({
         where: { option: { id: option.id } },
       });
+      const vote = await this.votesRepository.findOne({
+        where: { option: { id: option.id }, user: { id: userId } },
+      });
+      if (vote) {
+        post['hasUserVoted'] = true;
+        post['votedOption'] = option;
+      }
       option.votesCount = voteCount;
     }
 

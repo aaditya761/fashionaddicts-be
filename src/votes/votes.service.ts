@@ -53,7 +53,7 @@ export class VotesService {
       .createQueryBuilder('vote')
       .innerJoin('vote.option', 'option')
       .where('option.postId = :postId', { postId })
-      .andWhere('vote.userId = :userId', { userId })
+      .andWhere('vote.user.id = :userId', { userId })
       .getOne();
 
     if (existingVote) {
@@ -63,7 +63,7 @@ export class VotesService {
     // Create vote
     const vote = this.votesRepository.create({
       user: { id: userId },
-      option,
+      option: { id: optionId },
     });
 
     return this.votesRepository.save(vote);

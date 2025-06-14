@@ -15,11 +15,30 @@ export enum PostType {
   LOOK = 'look',
 }
 
-export class CreateOptionDto {
-  @ApiProperty({ description: 'Image URL' })
+export class CreateLinkPreviewDto {
+  @ApiProperty({ description: 'Product URL' })
   @IsNotEmpty()
   @IsUrl()
   url: string;
+}
+
+export class CreateOptionDto {
+  @ApiProperty({ description: 'Product URL' })
+  @IsNotEmpty()
+  @IsUrl()
+  url: string;
+
+  @ApiProperty({ description: 'Product image' })
+  @IsUrl()
+  image: string;
+
+  @ApiProperty({ description: 'Product name' })
+  @IsString()
+  productName: string;
+
+  @ApiProperty({ description: 'Site name' })
+  @IsString()
+  siteName: string;
 }
 
 export class CreatePostDto {

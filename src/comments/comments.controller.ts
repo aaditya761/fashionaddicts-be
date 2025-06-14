@@ -34,7 +34,7 @@ export class CommentsController {
     @Request() req,
     @Body() createCommentDto: CreateCommentDto,
   ) {
-    return this.commentsService.create(postId, req.user.id, createCommentDto);
+    return this.commentsService.create(postId, req.user.sub, createCommentDto);
   }
 
   @Get()

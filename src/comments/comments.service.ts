@@ -24,6 +24,7 @@ export class CommentsService {
     userId: number,
     createCommentDto: CreateCommentDto,
   ): Promise<Comment> {
+    console.log(postId, userId, createCommentDto);
     // Check if post exists
     const post = await this.postsRepository.findOne({ where: { id: postId } });
     if (!post) {
@@ -33,8 +34,8 @@ export class CommentsService {
     // Create comment
     const comment = this.commentsRepository.create({
       text: createCommentDto.text,
-      userId,
-      postId,
+      user: { id: userId },
+      post: { id: postId },
     });
 
     return this.commentsRepository.save(comment);
