@@ -1,16 +1,27 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: postgres:14-alpine
-    ports:
-      - "5432:5432"
+  techno-stacks-be:
+    container_name: techno-stacks-be
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fashionvote
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - PORT=${PORT}
+      - NODE_ENV=${NODE_ENV}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL}
+    build: .
+    ports:
+      - '3000:3000'
+    networks:
+      - techno-stacks-net
 
-volumes:
-  postgres_data:
+networks:
+  techno-stacks-net:
+    external: true
+
