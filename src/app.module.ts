@@ -26,6 +26,7 @@ import { AuthController } from './auth/auth.controller';
       database: process.env.DB_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
+      ssl: { rejectUnauthorized: false },
     }),
     AuthModule,
     UsersModule,
