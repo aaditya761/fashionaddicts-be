@@ -42,12 +42,26 @@ export class PostsService {
   ) {}
 
   async getMetadataWithPuppeteer(url: string): Promise<Metadata> {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process',
+      ],
+    });
     const page = await browser.newPage();
 
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36',
     );
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
+    });
+    await page.setViewport({ width: 1200, height: 800 });
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
