@@ -15,6 +15,17 @@ export enum PostType {
   LOOK = 'look',
 }
 
+export interface LinkPreviewResponse {
+  url?: string;
+  title?: string;
+  description?: string;
+  images?: string[];
+  siteName?: string;
+  mediaType?: string;
+  contentType?: string;
+  favicons?: string[];
+}
+
 export class CreateLinkPreviewDto {
   @ApiProperty({ description: 'Product URL' })
   @IsNotEmpty()

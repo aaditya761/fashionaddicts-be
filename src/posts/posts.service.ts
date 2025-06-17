@@ -8,10 +8,25 @@ import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { Option } from './entities/option.entity';
 import { Vote } from '../votes/entities/vote.entity';
-import { CreateLinkPreviewDto, CreatePostDto } from './dto/create-post.dto';
+import {
+  CreateLinkPreviewDto,
+  CreatePostDto,
+  LinkPreviewResponse,
+} from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
 import { getLinkPreview } from 'link-preview-js';
+import * as puppeteer from 'puppeteer';
 
+interface Metadata {
+  url?: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  siteName?: string;
+  mediaType?: string;
+  contentType?: string;
+  favicons?: string[];
+}
 
 @Injectable()
 export class PostsService {
@@ -26,10 +41,61 @@ export class PostsService {
     private readonly votesRepository: Repository<Vote>,
   ) {}
 
-  async getLinkPreview(url: CreateLinkPreviewDto): Promise<any> {
-    return await getLinkPreview(url.url).then((data) => {
-      return data;
+  async getMetadataWithPuppeteer(url: string): Promise<Metadata> {
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36',
+    );
+
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+    const data = await page.evaluate(() => {
+      const getMeta = (selector: string) =>
+        document.querySelector(selector)?.getAttribute('content') || '';
+
+      return {
+        title: document.title,
+        description: getMeta("meta[name='description']"),
+        image: getMeta("meta[property='og:image']"),
+        siteName: getMeta("meta[property='og:site_name']"),
+      };
     });
+
+    await browser.close();
+    return data;
+  }
+
+  async getLinkPreview(
+    url: CreateLinkPreviewDto,
+  ): Promise<LinkPreviewResponse> {
+    try {
+      const preview: LinkPreviewResponse = await getLinkPreview(url.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        },
+      });
+
+      const isIncomplete =
+        !preview.description &&
+        (!('images' in preview) || !preview.images?.length) &&
+        !('siteName' in preview);
+
+      if (isIncomplete) {
+        console.warn('Fallback to Puppeteer due to incomplete data.');
+        const puppeteerData = await this.getMetadataWithPuppeteer(url.url);
+        return {
+          ...preview,
+          ...puppeteerData,
+        };
+      }
+
+      return preview;
+    } catch (err: any) {
+      console.warn('Primary preview failed, using Puppeteer fallback...', err);
+      return await this.getMetadataWithPuppeteer(url.url);
+    }
   }
 
   async create(userId: number, createPostDto: CreatePostDto): Promise<Post> {
@@ -62,7 +128,7 @@ export class PostsService {
     userId: number | null,
     filterDto: FilterPostsDto,
   ): Promise<{ posts: Post[]; total: number }> {
-    const { page, limit, filter } = filterDto;
+    const { page, limit } = filterDto;
     const skip = ((page || 1) - 1) * (limit || 1);
 
     // Create base query builder
