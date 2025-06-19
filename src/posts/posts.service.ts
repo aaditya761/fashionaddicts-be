@@ -8,17 +8,12 @@ import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { Option } from './entities/option.entity';
 import { Vote } from '../votes/entities/vote.entity';
-import {
-  CreateLinkPreviewDto,
-  CreatePostDto,
-  LinkPreviewResponse,
-} from './dto/create-post.dto';
+import { CreateLinkPreviewDto, CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
-import { getLinkPreview } from 'link-preview-js';
 import * as puppeteer from 'puppeteer';
 
-interface Metadata {
-  url?: string;
+export interface LinkPreview {
+  url: string;
   title?: string;
   description?: string;
   image?: string;
@@ -41,74 +36,43 @@ export class PostsService {
     private readonly votesRepository: Repository<Vote>,
   ) {}
 
-  async getMetadataWithPuppeteer(url: string): Promise<Metadata> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-zygote',
-        '--single-process',
-      ],
-    });
-    const page = await browser.newPage();
-
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36',
-    );
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-    });
-    await page.setViewport({ width: 1200, height: 800 });
-
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-
-    const data = await page.evaluate(() => {
-      const getMeta = (selector: string) =>
-        document.querySelector(selector)?.getAttribute('content') || '';
-
-      return {
-        title: document.title,
-        description: getMeta("meta[name='description']"),
-        image: getMeta("meta[property='og:image']"),
-        siteName: getMeta("meta[property='og:site_name']"),
-      };
-    });
-
-    await browser.close();
-    return data;
-  }
-
-  async getLinkPreview(
-    url: CreateLinkPreviewDto,
-  ): Promise<LinkPreviewResponse> {
+  async getLinkPreview(url: CreateLinkPreviewDto): Promise<LinkPreview | null> {
     try {
-      const preview: LinkPreviewResponse = await getLinkPreview(url.url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        },
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'], // required for EC2
       });
 
-      const isIncomplete =
-        !preview.description &&
-        (!('images' in preview) || !preview.images?.length) &&
-        !('siteName' in preview);
+      const page = await browser.newPage();
+      await page.goto(url.url, {
+        waitUntil: 'domcontentloaded',
+        timeout: 15000,
+      });
 
-      if (isIncomplete) {
-        console.warn('Fallback to Puppeteer due to incomplete data.');
-        const puppeteerData = await this.getMetadataWithPuppeteer(url.url);
-        return {
-          ...preview,
-          ...puppeteerData,
+      const metadata = await page.evaluate(() => {
+        const getMeta = (name: string): string | undefined => {
+          const metaByName = document.querySelector(
+            `meta[name="${name}"]`,
+          ) as HTMLMetaElement;
+          const metaByProperty = document.querySelector(
+            `meta[property="${name}"]`,
+          ) as HTMLMetaElement;
+          return metaByName?.content || metaByProperty?.content;
         };
-      }
 
-      return preview;
+        return {
+          title: document.title,
+          description: getMeta('description') || getMeta('og:description'),
+          image: getMeta('og:image'),
+          url: getMeta('og:url') || window.location.href,
+        };
+      });
+
+      await browser.close();
+      return metadata;
     } catch (err: any) {
-      console.warn('Primary preview failed, using Puppeteer fallback...', err);
-      return await this.getMetadataWithPuppeteer(url.url);
+      console.warn('Link preview failed:', err);
+      return null;
     }
   }
 
