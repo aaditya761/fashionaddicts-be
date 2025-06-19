@@ -39,7 +39,7 @@ export class PostsController {
   @ApiOperation({ summary: 'Get link preview' })
   @ApiResponse({ status: 200, description: 'Preview fetch successfully' })
   getPreview(@Request() req, @Body() url: CreateLinkPreviewDto) {
-    return this.postsService.getLinkPreview(url);
+    return this.postsService.getLinkPreview(url.url);
   }
 
   @Public()
