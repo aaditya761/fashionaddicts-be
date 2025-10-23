@@ -10,7 +10,11 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { PostsService } from './posts.service';
-import { CreateLinkPreviewDto, CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
+import {
+  CreateLinkPreviewDto,
+  CreateOptionDto,
+  CreatePostDto,
+} from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
 import { Public } from '../auth/auth.public';
 import {
@@ -51,7 +55,6 @@ export class PostsController {
     const userId = req.user?.id || null;
     return this.postsService.findAll(userId, filterDto);
   }
-
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a post by ID' })

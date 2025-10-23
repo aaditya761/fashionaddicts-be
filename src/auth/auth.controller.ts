@@ -60,7 +60,7 @@ export class AuthController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Authentication failed',
-        error.status || HttpStatus.UNAUTHORIZED
+        error.status || HttpStatus.UNAUTHORIZED,
       );
     }
   }

@@ -8,9 +8,9 @@ import { Repository } from 'typeorm';
 import { Post } from './entities/post.entity';
 import { Option } from './entities/option.entity';
 import { Vote } from '../votes/entities/vote.entity';
-import { CreateLinkPreviewDto, CreateOptionDto, CreatePostDto } from './dto/create-post.dto';
+import { CreatePostDto } from './dto/create-post.dto';
 import { FilterPostsDto } from './dto/filter-posts.dto';
-import * as puppeteer from 'puppeteer';
+import { chromium, Browser, Page } from 'playwright';
 
 export interface LinkPreview {
   url: string;
@@ -25,8 +25,6 @@ export interface LinkPreview {
 
 @Injectable()
 export class PostsService {
-  private browser: puppeteer.Browser | null = null;
-
   constructor(
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
@@ -38,138 +36,65 @@ export class PostsService {
     private readonly votesRepository: Repository<Vote>,
   ) {}
 
-  private async getBrowser(): Promise<puppeteer.Browser> {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-features=TranslateUI',
-          '--disable-ipc-flooding-protection',
-        ],
-      });
-    }
-    return this.browser;
-  }
-
-  private getRandomUserAgent(): string {
-    const userAgents = [
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    ];
-    return userAgents[Math.floor(Math.random() * userAgents.length)];
-  }
-
   async getLinkPreview(url: string): Promise<LinkPreview> {
-    const browser = await this.getBrowser();
-    const page = await browser.newPage();
-
+    let browser: Browser | null = null;
     try {
-      // Set a realistic user agent
-      await page.setUserAgent(this.getRandomUserAgent());
+      browser = await chromium.launch({ headless: true });
+      const page: Page = await browser.newPage();
 
-      // Set viewport to a common desktop resolution
-      await page.setViewport({ width: 1920, height: 1080 });
+      // Navigate to the provided URL
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
 
-      // Set extra headers to appear more like a real browser
-      await page.setExtraHTTPHeaders({
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
-        'Sec-Ch-Ua':
-          '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-      });
-
-      // Add a small delay to avoid being flagged as a bot
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000,
-      });
-
-      // Wait a bit for dynamic content to load
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Extract metadata
-      const metadata = await page.evaluate(() => {
-        const getMetaContent = (
-          name: string,
-          property?: string,
-        ): string | undefined => {
+      // Extract link preview data
+      const linkPreview = await page.evaluate(() => {
+        const getMetaContent = (name: string): string | undefined => {
           const meta = document.querySelector(
-            `meta[name="${name}"], meta[property="${property}"]`,
-          ) as HTMLMetaElement;
-          return meta?.content;
+            `meta[name="${name}"], meta[property="${name}"]`,
+          );
+          return meta?.getAttribute('content') || undefined;
         };
 
-        const getFavicon = (): string | undefined => {
-          const favicon = document.querySelector(
-            'link[rel="icon"], link[rel="shortcut icon"]',
-          ) as HTMLLinkElement;
-          return favicon?.href;
-        };
-
-        const getImages = (): string[] => {
-          const images = Array.from(document.querySelectorAll('img'));
-          return images
-            .map((img) => img.src)
-            .filter((src) => src && src.startsWith('http'))
-            .slice(0, 5); // Limit to first 5 images
+        const getFavicons = (): string[] => {
+          const favicons: string[] = [];
+          const links = document.querySelectorAll('link[rel*="icon"]');
+          links.forEach((link) => {
+            const href = link.getAttribute('href');
+            if (href) {
+              favicons.push(
+                href.startsWith('http')
+                  ? href
+                  : new URL(href, window.location.href).href,
+              );
+            }
+          });
+          return favicons;
         };
 
         return {
-          title: document.title || getMetaContent('title'),
+          url: window.location.href,
+          title: document.title || getMetaContent('og:title'),
           description:
             getMetaContent('description') || getMetaContent('og:description'),
-          image: getMetaContent('og:image') || getMetaContent('twitter:image'),
-          siteName:
-            getMetaContent('og:site_name') ||
-            getMetaContent('application-name'),
-          favicon: getFavicon(),
-          images: getImages(),
+          image: getMetaContent('og:image'),
+          siteName: getMetaContent('og:site_name'),
+          mediaType: getMetaContent('og:type'),
+          contentType: getMetaContent('og:type'),
+          favicons: getFavicons(),
         };
       });
 
-      return {
-        url: url,
-        title: metadata.title,
-        description: metadata.description,
-        image: metadata.image,
-        siteName: metadata.siteName,
-        favicons: metadata.favicon ? [metadata.favicon] : [],
-      };
+      return linkPreview;
     } catch (error) {
       console.error('Error fetching link preview:', error);
-
-      // Return a fallback response
+      // Return basic info if scraping fails
       return {
-        url: url,
+        url,
         title: 'Unable to fetch preview',
-        description: 'The link preview could not be loaded at this time.',
       };
     } finally {
-      await page.close();
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 
